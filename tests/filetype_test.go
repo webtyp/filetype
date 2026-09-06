@@ -3,7 +3,7 @@ package filetype_test
 import (
 	"testing"
 
-	"github.com/tinywasm/filetype"
+	"webtyp.com/filetype"
 )
 
 func TestDetect(t *testing.T) {

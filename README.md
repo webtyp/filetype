@@ -1,4 +1,4 @@
-# tinywasm/filetype
+# webtyp/filetype
 <img src="docs/img/badges.svg">
 
 Identifies a file's real type **from its bytes**. Never decodes, never trusts the client.
@@ -7,7 +7,7 @@ A `Content-Type` header and a file extension are text the client chose — a cla
 evidence. Only the leading bytes decide.
 
 ```bash
-go get github.com/tinywasm/filetype
+go get webtyp.com/filetype
 ```
 
 ## Why it is tiny
@@ -23,7 +23,7 @@ can never disagree about what a file is.
 ## Usage
 
 ```go
-import "github.com/tinywasm/filetype"
+import "webtyp.com/filetype"
 
 // Images is the safe default: raster images only, nothing scriptable.
 t, err := filetype.Images.Validate(data)

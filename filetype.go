@@ -12,7 +12,7 @@
 // evidence. Only the bytes are evidence.
 package filetype
 
-import "github.com/tinywasm/fmt"
+import "webtyp.com/fmt"
 
 // Type is a recognized file type: its real MIME type and canonical extension.
 type Type struct {

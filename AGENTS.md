@@ -1,4 +1,4 @@
-# Agent Guide — `tinywasm/filetype`
+# Agent Guide — `webtyp/filetype`
 
 Constraints for agents working on this library. Read this before any change.
 
@@ -31,9 +31,9 @@ The same code runs in a browser (validating **before** upload) and on a server (
 what arrived), so client and server can never disagree about what a file is. That property is
 the whole point, and it breaks the moment someone adds a build tag or a stdlib import.
 
-- **No standard library.** Errors use `tinywasm/fmt`. Byte helpers are written by hand here
+- **No standard library.** Errors use `webtyp/fmt`. Byte helpers are written by hand here
   (`hasPrefix`, `hasPrefixFold`) rather than importing `bytes`.
-- **One dependency:** `tinywasm/fmt`. Do not add a second one.
+- **One dependency:** `webtyp/fmt`. Do not add a second one.
 
 ## Scriptable types are detected, never allowed
 
@@ -48,7 +48,7 @@ be permissive.
 ## Testing
 
 ```bash
-go install github.com/tinywasm/devflow/cmd/gotest@latest
+go install webtyp.com/devflow/cmd/gotest@latest
 gotest
 ```
 
