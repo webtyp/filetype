@@ -3,8 +3,10 @@ PLAN: "feat: filetype recognizes the common business media — video, audio and 
 TAG: v0.1.0
 EXECUTOR: jules
 REVIEWER: none
-STATUS: running
+STATUS: review
 SESSION: 18187375926765564844
+PR: https://github.com/webtyp/filetype/pull/1
+REVIEWED_COMMIT: b53ce1cabbe6d4238174e2bfadc9651ed18cfae4
 ---
 
 > Read AGENTS.md at the repo root before any change.
