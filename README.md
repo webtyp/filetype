@@ -26,7 +26,7 @@ can never disagree about what a file is.
 import "webtyp.com/filetype"
 
 // Images is the safe default: raster images only, nothing scriptable.
-// Other safe defaults: filetype.Videos, filetype.Audio, filetype.Documents (images + PDF)
+// Other safe defaults: filetype.Videos, filetype.Audio, filetype.Documents (PDF, Word, Excel, PowerPoint), filetype.Scans (images + PDF)
 t, err := filetype.Images.Validate(data)
 if err != nil {
     return err // "filetype: PDF is not allowed" — the error names what it actually found
@@ -55,7 +55,9 @@ if !ok {
 | `MP3`, `WAV`, `OGG`, `M4A` | ✅ | ❌ — in `Audio` allowlist |
 | `SVG`, `HTML` | ✅ | ❌ **never** |
 
-**Documents** (`filetype.Documents`) accepts `PNG`, `JPEG`, `WebP`, and `PDF`.
+**Documents** (`filetype.Documents`) accepts `PDF`, `DOCX`, `XLSX` and `PPTX`; a package with macros (`OfficeMacro`) and the old OLE formats (`.doc`, `.xls`, `.ppt`) are detected to be rejected by name.
+
+**Scans** (`filetype.Scans`) accepts `PNG`, `JPEG`, `WebP` and `PDF`: scanned papers and photographed receipts.
 
 **SVG and HTML are detected on purpose, so they can be rejected *by name*** instead of
 disappearing into "unknown". Both can carry JavaScript: served from your own domain, they

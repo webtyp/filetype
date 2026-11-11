@@ -148,20 +148,72 @@ func TestAudio_RejectsVideo(t *testing.T) {
 	}
 }
 
-func TestDocuments_AcceptsPDFAndImagesNotSVG(t *testing.T) {
-	pdf := []byte("%PDF-1.7")
-	if _, err := filetype.Documents.Validate(pdf); err != nil {
-		t.Fatalf("Documents allowlist rejected PDF: %v", err)
-	}
+// officeBytes builds the start of a ZIP package: the local header, the first entry name and then the given entry names.
+var (
+	pngBytes = []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	svgBytes = []byte("<svg xmlns='http://www.w3.org/2000/svg'></svg>")
+)
 
-	pngBytes := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
-	if _, err := filetype.Documents.Validate(pngBytes); err != nil {
-		t.Fatalf("Documents allowlist rejected PNG: %v", err)
+func officeBytes(entries ...string) []byte {
+	b := []byte{'P', 'K', 0x03, 0x04}
+	b = append(b, make([]byte, 26)...)
+	b = append(b, []byte("[Content_Types].xml")...)
+	b = append(b, make([]byte, 40)...)
+	for _, e := range entries {
+		b = append(b, []byte(e)...)
+		b = append(b, make([]byte, 12)...)
 	}
+	return b
+}
 
-	svgBytes := []byte("<svg xmlns=\"http://www.w3.org/2000/svg\">")
-	if _, err := filetype.Documents.Validate(svgBytes); err == nil || !contains(err.Error(), "SVG") {
-		t.Fatalf("Documents allowlist accepted SVG or failed to name SVG, error: %v", err)
+func TestDocuments_AcceptsPDFAndOfficeNotImages(t *testing.T) {
+	cases := []struct {
+		name string
+		data []byte
+		want filetype.Type
+	}{
+		{"pdf", []byte("%PDF-1.7"), filetype.PDF},
+		{"docx", officeBytes("word/document.xml"), filetype.DOCX},
+		{"xlsx", officeBytes("xl/workbook.xml"), filetype.XLSX},
+		{"pptx", officeBytes("ppt/presentation.xml"), filetype.PPTX},
+	}
+	for _, c := range cases {
+		got, err := filetype.Documents.Validate(c.data)
+		if err != nil || got.String() != c.want.String() {
+			t.Fatalf("Documents.Validate(%s) = %v, %v; want %v", c.name, got, err, c.want)
+		}
+	}
+	if _, err := filetype.Documents.Validate(pngBytes); err == nil {
+		t.Fatalf("Documents accepted an image")
+	}
+}
+
+func TestDocuments_RejectsMacrosOLEAndPlainZip(t *testing.T) {
+	macro := officeBytes("word/document.xml", "word/vbaProject.bin")
+	if _, err := filetype.Documents.Validate(macro); err == nil || !contains(err.Error(), "OfficeMacro") {
+		t.Fatalf("a package with macros must be rejected by name, got %v", err)
+	}
+	ole := []byte{0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1, 0, 0}
+	if _, err := filetype.Documents.Validate(ole); err == nil || !contains(err.Error(), "OLE") {
+		t.Fatalf("an OLE file must be rejected by name, got %v", err)
+	}
+	plainZip := append([]byte{'P', 'K', 0x03, 0x04}, make([]byte, 80)...)
+	if _, err := filetype.Documents.Validate(plainZip); err == nil {
+		t.Fatalf("a plain ZIP must not be recognized")
+	}
+	if !filetype.OfficeMacro.Scriptable() || !filetype.OLE.Scriptable() {
+		t.Fatalf("OfficeMacro and OLE are scriptable")
+	}
+}
+
+func TestScans_AcceptsImagesAndPDF(t *testing.T) {
+	for _, d := range [][]byte{pngBytes, []byte("%PDF-1.7")} {
+		if _, err := filetype.Scans.Validate(d); err != nil {
+			t.Fatalf("Scans rejected a scan: %v", err)
+		}
+	}
+	if _, err := filetype.Scans.Validate(svgBytes); err == nil || !contains(err.Error(), "SVG") {
+		t.Fatalf("Scans accepted SVG or failed to name it: %v", err)
 	}
 }
 
