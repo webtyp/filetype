@@ -52,6 +52,132 @@ func TestDetect(t *testing.T) {
 	}
 }
 
+func TestDetect_Video(t *testing.T) {
+	mp4 := []byte{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm', 0, 0}
+	mov := []byte{0, 0, 0, 0x14, 'f', 't', 'y', 'p', 'q', 't', ' ', ' ', 0, 0}
+	webm := []byte{0x1A, 0x45, 0xDF, 0xA3, 0, 0}
+
+	tests := []struct {
+		name string
+		data []byte
+		want filetype.Type
+	}{
+		{"mp4", mp4, filetype.MP4},
+		{"mov", mov, filetype.MOV},
+		{"webm", webm, filetype.WebM},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := filetype.Detect(tt.data)
+			if !ok {
+				t.Fatalf("Detect() ok = false, want true")
+			}
+			if got.MIME != tt.want.MIME {
+				t.Errorf("Detect() = %q, want %q", got.MIME, tt.want.MIME)
+			}
+		})
+	}
+}
+
+func TestDetect_Audio(t *testing.T) {
+	mp3id3 := []byte("ID3\x04\x00\x00")
+	mp3sync := []byte{0xFF, 0xFB, 0x90, 0x00}
+	wav := []byte("RIFF\x24\x00\x00\x00WAVEfmt ")
+	ogg := []byte("OggS\x00\x02")
+	m4a := []byte{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'M', '4', 'A', ' ', 0, 0}
+
+	tests := []struct {
+		name string
+		data []byte
+		want filetype.Type
+	}{
+		{"mp3 id3", mp3id3, filetype.MP3},
+		{"mp3 sync", mp3sync, filetype.MP3},
+		{"wav", wav, filetype.WAV},
+		{"ogg", ogg, filetype.OGG},
+		{"m4a", m4a, filetype.M4A},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := filetype.Detect(tt.data)
+			if !ok {
+				t.Fatalf("Detect() ok = false, want true")
+			}
+			if got.MIME != tt.want.MIME {
+				t.Errorf("Detect() = %q, want %q", got.MIME, tt.want.MIME)
+			}
+		})
+	}
+}
+
+func TestDetect_WebPStillWebP(t *testing.T) {
+	got, ok := filetype.Detect([]byte("RIFF\x00\x00\x00\x00WEBPVP8 "))
+	if !ok || got.MIME != filetype.WebP.MIME {
+		t.Fatalf("Detect() = %v, want WebP", got.MIME)
+	}
+}
+
+func TestVideos_RejectsAudioAndImages(t *testing.T) {
+	mp4 := []byte{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm', 0, 0}
+	if _, err := filetype.Videos.Validate(mp4); err != nil {
+		t.Fatalf("Videos allowlist rejected a video: %v", err)
+	}
+
+	mp3sync := []byte{0xFF, 0xFB, 0x90, 0x00}
+	if _, err := filetype.Videos.Validate(mp3sync); err == nil || !contains(err.Error(), "MP3") {
+		t.Fatalf("Videos allowlist accepted audio or failed to name MP3, error: %v", err)
+	}
+
+	pngBytes := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	if _, err := filetype.Videos.Validate(pngBytes); err == nil {
+		t.Fatalf("Videos allowlist accepted an image")
+	}
+}
+
+func TestAudio_RejectsVideo(t *testing.T) {
+	wav := []byte("RIFF\x24\x00\x00\x00WAVEfmt ")
+	if _, err := filetype.Audio.Validate(wav); err != nil {
+		t.Fatalf("Audio allowlist rejected audio: %v", err)
+	}
+
+	mp4 := []byte{0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'i', 's', 'o', 'm', 0, 0}
+	if _, err := filetype.Audio.Validate(mp4); err == nil || !contains(err.Error(), "MP4") {
+		t.Fatalf("Audio allowlist accepted video or failed to name MP4, error: %v", err)
+	}
+}
+
+func TestDocuments_AcceptsPDFAndImagesNotSVG(t *testing.T) {
+	pdf := []byte("%PDF-1.7")
+	if _, err := filetype.Documents.Validate(pdf); err != nil {
+		t.Fatalf("Documents allowlist rejected PDF: %v", err)
+	}
+
+	pngBytes := []byte{0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A}
+	if _, err := filetype.Documents.Validate(pngBytes); err != nil {
+		t.Fatalf("Documents allowlist rejected PNG: %v", err)
+	}
+
+	svgBytes := []byte("<svg xmlns=\"http://www.w3.org/2000/svg\">")
+	if _, err := filetype.Documents.Validate(svgBytes); err == nil || !contains(err.Error(), "SVG") {
+		t.Fatalf("Documents allowlist accepted SVG or failed to name SVG, error: %v", err)
+	}
+}
+
+func TestNewTypes_NotScriptable(t *testing.T) {
+	types := []filetype.Type{
+		filetype.MP4, filetype.MOV, filetype.WebM,
+		filetype.MP3, filetype.WAV, filetype.OGG, filetype.M4A,
+	}
+
+	for _, ty := range types {
+		if ty.Scriptable() {
+			t.Errorf("Type %s must not be scriptable", ty.MIME)
+		}
+	}
+}
+
 // A PNG signature is not enough: the bytes decide, and only the bytes.
 func TestDetectIgnoresClaimedType(t *testing.T) {
 	// HTML content that a client uploads claiming "image/png".

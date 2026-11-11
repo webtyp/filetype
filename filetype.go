@@ -10,6 +10,8 @@
 //
 // The type a client declares — a Content-Type header, a file extension — is a claim, not
 // evidence. Only the bytes are evidence.
+//
+// New media families: Video (MP4, MOV, WebM), Audio (MP3, WAV, OGG, M4A) and Documents.
 package filetype
 
 import "webtyp.com/fmt"
@@ -35,10 +37,27 @@ var (
 
 	SVG  = Type{MIME: "image/svg+xml", Ext: ".svg", name: "SVG"}
 	HTML = Type{MIME: "text/html", Ext: ".html", name: "HTML"}
+
+	MP4  = Type{MIME: "video/mp4", Ext: ".mp4", name: "MP4"}
+	MOV  = Type{MIME: "video/quicktime", Ext: ".mov", name: "MOV"}
+	WebM = Type{MIME: "video/webm", Ext: ".webm", name: "WebM"}
+	MP3  = Type{MIME: "audio/mpeg", Ext: ".mp3", name: "MP3"}
+	WAV  = Type{MIME: "audio/wav", Ext: ".wav", name: "WAV"}
+	OGG  = Type{MIME: "audio/ogg", Ext: ".ogg", name: "OGG"}
+	M4A  = Type{MIME: "audio/mp4", Ext: ".m4a", name: "M4A"}
 )
 
 // Images is the safe default for user uploads: raster images only, nothing scriptable.
 var Images = NewAllowlist(PNG, JPEG, GIF, WebP)
+
+// Videos is the safe default for video uploads.
+var Videos = NewAllowlist(MP4, MOV, WebM)
+
+// Audio is the safe default for audio uploads.
+var Audio = NewAllowlist(MP3, WAV, OGG, M4A)
+
+// Documents is the safe default for scans and receipts: raster images and PDF, nothing scriptable.
+var Documents = NewAllowlist(PNG, JPEG, WebP, PDF)
 
 // String returns the type's short name ("PNG"), for diagnostics.
 func (t Type) String() string {
@@ -67,6 +86,20 @@ func Detect(data []byte) (t Type, ok bool) {
 		return GIF, true
 	case hasPrefix(data, []byte("RIFF")) && hasPrefixAt(data, 8, []byte("WEBP")):
 		return WebP, true
+	case hasPrefix(data, []byte{0x1A, 0x45, 0xDF, 0xA3}): // EBML header: WebM (Matroska containers are not told apart)
+		return WebM, true
+	case hasPrefixAt(data, 4, []byte("ftyp")) && hasPrefixAt(data, 8, []byte("qt  ")):
+		return MOV, true
+	case hasPrefixAt(data, 4, []byte("ftyp")) && hasPrefixAt(data, 8, []byte("M4A ")):
+		return M4A, true
+	case hasPrefixAt(data, 4, []byte("ftyp")): // every other ISO base media brand (isom, iso2, mp41, mp42, avc1, M4V …)
+		return MP4, true
+	case hasPrefix(data, []byte("RIFF")) && hasPrefixAt(data, 8, []byte("WAVE")):
+		return WAV, true
+	case hasPrefix(data, []byte("OggS")):
+		return OGG, true
+	case hasPrefix(data, []byte("ID3")), hasPrefix(data, []byte{0xFF, 0xFB}), hasPrefix(data, []byte{0xFF, 0xF3}), hasPrefix(data, []byte{0xFF, 0xF2}):
+		return MP3, true
 	case hasPrefix(data, []byte("%PDF-")):
 		return PDF, true
 	}
