@@ -3,6 +3,8 @@ PLAN: "feat: filetype recognizes the common business media — video, audio and 
 TAG: v0.1.0
 EXECUTOR: jules
 REVIEWER: none
+STATUS: running
+SESSION: 18187375926765564844
 ---
 
 > Read AGENTS.md at the repo root before any change.
